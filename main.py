@@ -3,46 +3,45 @@ import WirelessAccess
 import time
 import cv2
 from ultralytics import YOLO
-
+from YOLOdetection import *
+from ultralytics.utils.plotting import Annotator, colors
 
 
 if __name__ == "__main__":
-    # Setup
+    # ---- Setup ----
     # ba = WirelessAccess.Wireless("/dev/cu.usbserial-110", 9600)
-    model = YOLO("ProjectDrone/coinModel.pt")
+    LINE_Y = 600
+    NOTIFY_COUNT = 5
 
+    model = YOLO("ProjectDrone/coinModel.pt")
+    object_history = {} 
     seenID = set()
     sent = True
+    totalCount = 0
+    lastCounted = -1 
 
-    # Start continuous tracking (persist keeps IDs)
+    # ---- Start continuous tracking (persist keeps IDs) ----
     for result in model.track(source=0, 
                                 tracker="botsort.yaml", 
                                 persist=True, 
                                 stream=True, 
                                 classes=[1,2,3],
                                 verbose=False,
-                                conf=0.4):
-        frame = result.plot()
+                                conf=0.4,
+                                imgsz=640):
+        frame = result.orig_img
+        frame = drawAnnotator(frame, result)
 
-        if hasattr(result, 'boxes') and result.boxes.id is not None:
-            for objID in result.boxes.id:
-                objID = int(objID.item())
-                if objID not in seenID:
-                    seenID.add(objID)
+        # --- Call the counting function ---
+        totalCount, object_history, seenID = countLineCrossing(
+            frame, result, LINE_Y, object_history, seenID, totalCount
+        )
 
-                    print(f"New object detected: ID {objID}, Total count: {len(seenID)}")
-                    sent = False
-                
-            for leaveID in seenID.difference(set(result.boxes.id.cpu().numpy())):
-                seenID.remove(leaveID)
-
-        # when the count reaches something, returns
-        if len(seenID) % 5 == 0 & sent is not True:
-            # ba.sendMessage("scissor")
-            print(f"should be sent {len(seenID)}")
+        # --- Sending Logic ---
+        if totalCount > 0 and totalCount % NOTIFY_COUNT == 0 and totalCount != lastCounted:
+            print(f"Count is {totalCount}. Sending message")
             time.sleep(0.1)
-            # ba.sendMessage("test")
-            sent = True
+            lastCounted = totalCount
 
         cv2.imshow("Tracking", frame)
 
