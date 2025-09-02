@@ -13,7 +13,7 @@ LINE_Y = 600
 
 
 # ba = WirelessAccess.Wireless("/dev/cu.usbserial-110", 9600)
-model = YOLO("ProjectDrone/coinFall.pt")
+model = YOLO("ProjectDrone/coinFall150.pt")
 object_history = {} 
 seenID = set()
 sent = True
@@ -21,15 +21,14 @@ totalCount = 0
 lastCounted = -1 
 
 if __name__ == "__main__":
-    
-
     # ---- Start continuous tracking (persist keeps IDs) ----
     for result in model.track(source=0, 
-                                tracker="bytetrack.yaml", 
+                                tracker="botsort.yaml", 
                                 persist=True, 
                                 stream=True,
                                 verbose=False,
-                                conf=0.4):
+                                imgsz=640,
+                                conf=0.6):
         frame = result.orig_img
         frame = drawAnnotator(frame, result)
 
