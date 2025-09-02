@@ -4,10 +4,12 @@ import time
 import cv2
 from ultralytics import YOLO
 
+
+
 if __name__ == "__main__":
     # Setup
-    ba = WirelessAccess.Wireless("/dev/cu.usbserial-110", 9600)
-    model = YOLO("coinModel.pt")
+    # ba = WirelessAccess.Wireless("/dev/cu.usbserial-110", 9600)
+    model = YOLO("ProjectDrone/coinModel.pt")
 
     seenID = set()
     sent = True
@@ -36,10 +38,10 @@ if __name__ == "__main__":
 
         # when the count reaches something, returns
         if len(seenID) % 5 == 0 & sent is not True:
-            ba.sendMessage("scissor")
+            # ba.sendMessage("scissor")
             print(f"should be sent {len(seenID)}")
             time.sleep(0.1)
-            ba.sendMessage("test")
+            # ba.sendMessage("test")
             sent = True
 
         cv2.imshow("Tracking", frame)
@@ -48,4 +50,4 @@ if __name__ == "__main__":
             break
 
     cv2.destroyAllWindows()
-    ba.close()
+    # ba.close()
