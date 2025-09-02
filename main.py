@@ -6,29 +6,30 @@ from ultralytics import YOLO
 from YOLOdetection import *
 from ultralytics.utils.plotting import Annotator, colors
 
+# ---- Setup ----
+    
+NOTIFY_COUNT = 5
+LINE_Y = 600
+
+
+# ba = WirelessAccess.Wireless("/dev/cu.usbserial-110", 9600)
+model = YOLO("ProjectDrone/coinFall.pt")
+object_history = {} 
+seenID = set()
+sent = True
+totalCount = 0
+lastCounted = -1 
 
 if __name__ == "__main__":
-    # ---- Setup ----
-    # ba = WirelessAccess.Wireless("/dev/cu.usbserial-110", 9600)
-    LINE_Y = 600
-    NOTIFY_COUNT = 5
-
-    model = YOLO("ProjectDrone/coinModel.pt")
-    object_history = {} 
-    seenID = set()
-    sent = True
-    totalCount = 0
-    lastCounted = -1 
+    
 
     # ---- Start continuous tracking (persist keeps IDs) ----
     for result in model.track(source=0, 
-                                tracker="botsort.yaml", 
+                                tracker="bytetrack.yaml", 
                                 persist=True, 
-                                stream=True, 
-                                classes=[1,2,3],
+                                stream=True,
                                 verbose=False,
-                                conf=0.4,
-                                imgsz=640):
+                                conf=0.4):
         frame = result.orig_img
         frame = drawAnnotator(frame, result)
 
