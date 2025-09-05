@@ -30,7 +30,7 @@ if __name__ == "__main__":
                                 imgsz=640,
                                 conf=0.6):
         
-        frame = result.orig_img
+        frame = cv2.resize(result.orig_img, (640,640))
         flowFrame = opticalFlowOverlay(frame, prevFrame)
         prevFrame = frame.copy()
         annonate = drawAnnotator(flowFrame, result)

@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
+import os
 
-def opticalFlowOverlay(current_frame, prev_frame, resize_width=480):
+def opticalFlow(current_frame, prev_frame, resize_width=640):
     # If there is no previous frame, we can't compute flow.
     if prev_frame is None:
         return current_frame
@@ -25,22 +26,27 @@ def opticalFlowOverlay(current_frame, prev_frame, resize_width=480):
         next=current_gray,
         flow=None,
         pyr_scale=0.5,
-        levels=3,      # Reduced pyramid levels
-        winsize=15,
-        iterations=2,  # Reduced iterations
-        poly_n=5,
-        poly_sigma=1.1,
-        flags=0
+        levels=5,      
+        winsize=25,
+        iterations=3,  
+        poly_n=7,
+        poly_sigma=1.5,
+        flags=cv2.OPTFLOW_FARNEBACK_GAUSSIAN
     )
 
-    # Convert flow to polar coordinates to get magnitude and angle
+    # Convert flow to polar coordinates to get magnitude (speed) and angle (direction)
     magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+    # You can adjust these threshold values of 1 and 2.
+    mask = (flow[..., 1] > 1) & (magnitude > 2)
 
-    # Create an HSV image for visualization
+    # Create a black HSV image to draw on
     hsv_mask = np.zeros_like(prev_small, dtype=np.uint8)
-    hsv_mask[..., 1] = 255 # Max saturation
-    hsv_mask[..., 0] = angle * 180 / np.pi / 2
-    hsv_mask[..., 2] = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
+
+    # Where the mask is True, apply the color based on flow
+    hsv_mask[mask, 1] = 255  # Full Saturation
+    hsv_mask[mask, 0] = angle[mask] * 180 / np.pi / 2  # Hue from direction
+    norm_magnitude = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX)
+    hsv_mask[mask, 2] = norm_magnitude[mask] # Value from speed
 
     # Convert the HSV visualization to BGR
     bgr_flow = cv2.cvtColor(hsv_mask, cv2.COLOR_HSV2BGR)
@@ -49,21 +55,23 @@ def opticalFlowOverlay(current_frame, prev_frame, resize_width=480):
     original_dims = (current_frame.shape[1], current_frame.shape[0])
     bgr_flow_upscaled = cv2.resize(bgr_flow, original_dims)
 
-    # --- Overlay: Blend the original frame with the flow visualization ---
-    # cv2.addWeighted calculates: dst = src1*alpha + src2*beta + gamma
-    overlay_frame = cv2.addWeighted(
-        src1=current_frame, 
-        alpha=0.7, # Weight of the original frame (mostly opaque)
-        src2=bgr_flow_upscaled, 
-        beta=0.8,  # Weight of the flow visualization (semi-transparent)
-        gamma=0
-    )
+    return bgr_flow_upscaled 
 
-    return overlay_frame
+def extractFrames(frame, outputDir, count):
+        if not os.path.exists(outputDir):
+            os.makedirs(outputDir)
 
+        # Construct filename for the frame
+        frame_filename = os.path.join(outputDir, f"frame_{count:05d}.jpg")
+
+        # Save the frame as an image
+        cv2.imwrite(frame_filename, frame)
+
+
+frameCount = 0
 # --- Main execution block for the demo ---
 if __name__ == "__main__":
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture("/Users/alvin/Library/CloudStorage/GoogleDrive-alvin.setiawan1010@gmail.com/My Drive/pythonProjects-mac/Dronee/ProjectDrone/IMG_6335.mov")
     if not cap.isOpened():
         raise IOError("Cannot open webcam")
 
@@ -74,13 +82,16 @@ if __name__ == "__main__":
         if not ret:
             break
 
-        output_frame = opticalFlowOverlay(frame, prev_frame)
+        output_frame = opticalFlow(frame, prev_frame)
         
         # Update the previous frame for the next iteration
         prev_frame = frame.copy()
 
         # Display the single, combined output frame
         cv2.imshow("Optical Flow Overlay", output_frame)
+        extractFrames(output_frame, "fallingDataset", frameCount)
+
+        frameCount += 1
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
