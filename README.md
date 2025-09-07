@@ -1,5 +1,5 @@
 # Demo 
-[label](Drone%20Demo.mp4)
+[video](Drone%20Demo.mp4)
 
 The purpose of this project is to:
 1. Detect Falling object, especially palm oil detection with YOLO
