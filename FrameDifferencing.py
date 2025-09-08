@@ -47,19 +47,21 @@ def getOpticalFlow(prevGray, grayFrame):
     return flowMagViz
 
 def extractFrames(datasetDirectory, frame, count):
-    frameDir = os.path.join(datasetDirectory, "{count}.jpg")
+    os.makedirs(datasetDirectory, exist_ok=True)
+
+    frameDir = os.path.join(datasetDirectory, f"{count}_Frame.png")
 
     cv2.imwrite(frameDir, frame)
-    print(f"Made: {frameDir}.png")
+    print(f"Made: {frameDir}")
 
 def main():
     """
     Main function to demonstrate CFD (Red) and Optical Flow (Blue)
     overlay on a video file, resized for YOLO.
     """
-    cap = cv2.VideoCapture(1)
-    DATASET_DIRECTORY = "ProjectDrone/DATASET_CFD"
-    COUNT = 0
+    cap = cv2.VideoCapture("Videos/Dataset_6.mov")
+    DATASET_DIRECTORY = "DATASET_CFD"
+    COUNT = 526
 
     if not cap.isOpened():
         print("Error: Could not open video file.")
