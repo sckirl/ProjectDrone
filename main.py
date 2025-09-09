@@ -5,6 +5,7 @@ import cv2
 from ultralytics import YOLO
 from YOLOdetection import *
 from ultralytics.utils.plotting import Annotator, colors
+from FrameDifferencing import *
 
 # ---- Setup ----
     
@@ -13,7 +14,7 @@ LINE_Y = 600
 
 
 # ba = WirelessAccess.Wireless("/dev/cu.usbserial-110", 9600)
-model = YOLO("ProjectDrone/coinFall150.pt")
+model = YOLO("ProjectDrone/CFDFalling50.pt")
 object_history = {} 
 seenID = set()
 sent = True
