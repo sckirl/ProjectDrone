@@ -1,23 +1,23 @@
 import cv2
 from ultralytics.utils.plotting import Annotator, colors
 
-def drawAnnotator(frame, result):
-    # Draw the annotator efficiently instead of plotting with matplotlib every single frame
+def drawAnnotator(frame, results):
     annotator = Annotator(frame, line_width=2)
-    
-    if hasattr(result, 'boxes') and result.boxes.id is not None:
-        boxes = result.boxes.xyxy.cpu()
-        clss = result.boxes.cls.cpu().tolist()
-        ids = result.boxes.id.cpu().tolist()
+
+    # If results is a list, iterate
+    if isinstance(results, list):
+        results = results[0]  # take first batch
+
+    if hasattr(results, 'boxes') and results.boxes is not None:
+        boxes = results.boxes.xyxy.cpu()
+        clss = results.boxes.cls.cpu().tolist()
+        ids = results.boxes.id.cpu().tolist() if results.boxes.id is not None else [None] * len(boxes)
 
         for box, cls, obj_id in zip(boxes, clss, ids):
-            # Create a label with the object's ID
-            label = f"ID:{int(obj_id)}"
-            
-            # Use the annotator to draw the box and label
+            label = f"ID:{int(obj_id)}" if obj_id is not None else f"cls:{int(cls)}"
             annotator.box_label(box, label, color=colors(int(cls), True))
-            
-    return frame
+
+    return annotator.result()
 
 def countLineCrossing(frame, result, line_y, object_history, seenID, total_count):
     # Draw the horizontal counting line

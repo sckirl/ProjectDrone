@@ -12,42 +12,71 @@ from FrameDifferencing import *
 NOTIFY_COUNT = 5
 LINE_Y = 600
 
-
-# ba = WirelessAccess.Wireless("/dev/cu.usbserial-110", 9600)
-model = YOLO("ProjectDrone/CFDFalling50.pt")
+model = YOLO("CFDFalling-50.pt")
 object_history = {} 
 seenID = set()
 sent = True
 totalCount = 0
 lastCounted = -1 
 
-if __name__ == "__main__":
-    # ---- Start continuous tracking (persist keeps IDs) ----
-    for result in model.track(source=0, 
-                                tracker="botsort.yaml", 
-                                persist=True, 
-                                stream=True,
-                                verbose=False,
-                                imgsz=640,
-                                conf=0.6):
-        frame = result.orig_img
-        frame = drawAnnotator(frame, result)
+def main():
+    cap = cv2.VideoCapture("Videos/Test_3.MOV")
 
-        # --- Call the counting function ---
-        totalCount, object_history, seenID = countLineCrossing(
-            frame, result, LINE_Y, object_history, seenID, totalCount
-        )
+    if not cap.isOpened():
+        print("Error: Could not open video file.")
+        return
 
-        # --- Sending Logic ---
-        if totalCount > 0 and totalCount % NOTIFY_COUNT == 0 and totalCount != lastCounted:
-            print(f"Count is {totalCount}. Sending message")
-            time.sleep(0.1)
-            lastCounted = totalCount
+    # --- Calculate target dimensions once ---
+    ret, firstFrame = cap.read()
+    if not ret:
+        print("Error: could not read the first frame.")
+        cap.release()
+        return
+        
+    originalH, originalW = firstFrame.shape[:2]
+    targetW = 640
+    targetH = int(targetW * (originalH / originalW))
+    targetDims = (targetW, targetH)
+    
+    # Reset video capture to the beginning
+    cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
+    
+    # --- Initialize with resized frame ---
+    ret, frame = cap.read()
+    frame = cv2.resize(frame, targetDims, interpolation=cv2.INTER_AREA)
+    prevGray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+    prevGray = cv2.GaussianBlur(prevGray, (21, 21), 0)
+    cfdImage = np.zeros_like(prevGray)
 
-        cv2.imshow("Tracking", frame)
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break # End of video
 
-        if cv2.waitKey(1) & 0xFF == ord("q"):
+        frame = cv2.resize(frame, targetDims, interpolation=cv2.INTER_AREA)
+        grayFrame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        grayFrame = cv2.GaussianBlur(grayFrame, (21, 21), 0)
+
+        # --- FIX: Update cfdImage state in each loop for accumulation ---
+        cfdImage = getCFD(prevGray, grayFrame, cfdImage)
+        
+        opticalFlowMask = getOpticalFlow(prevGray, grayFrame)
+
+        # --- Call the Updated Overlay Function ---
+        overlaidResult = overlayMotionOnGrayscale(grayFrame, 
+                                                      redMask=cfdImage, 
+                                                      blueMask=opticalFlowMask)
+        result = model.predict(overlaidResult, conf=0.4)
+        annonated = drawAnnotator(overlaidResult, result[0])
+
+        # --- Display the Results ---
+        cv2.imshow('RED = CFD, BLUE = Optical Flow', annonated)
+
+        # Update the previous frame for the next iteration
+        prevGray = grayFrame.copy()
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
-    cv2.destroyAllWindows()
-    # ba.close()
+if __name__ == "__main__":
+    main()
