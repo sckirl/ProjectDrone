@@ -12,7 +12,7 @@ from FrameDifferencing import *
 NOTIFY_COUNT = 5
 LINE_Y = 600
 
-model = YOLO("CFDFalling-50.pt")
+model = YOLO("CFDFalling-120.pt")
 object_history = {} 
 seenID = set()
 sent = True
@@ -20,7 +20,7 @@ totalCount = 0
 lastCounted = -1 
 
 def main():
-    cap = cv2.VideoCapture("Videos/Test_3.MOV")
+    cap = cv2.VideoCapture(0)
 
     if not cap.isOpened():
         print("Error: Could not open video file.")

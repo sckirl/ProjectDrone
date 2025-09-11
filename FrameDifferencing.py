@@ -33,18 +33,41 @@ def overlayMotionOnGrayscale(grayFrame, redMask=None, blueMask=None, weight=0.6)
 def getCFD(prevGray, grayFrame, cfdImage):
     """Calculates and accumulates the frame difference."""
     frameDelta = cv2.absdiff(prevGray, grayFrame)
-    thresh = cv2.threshold(frameDelta, 40, 120, cv2.THRESH_BINARY)[1]
+    thresh = cv2.threshold(frameDelta, 30, 255, cv2.THRESH_BINARY)[1]
     # Add the new motion and apply decay
     newCfdImage = cv2.add(cfdImage, thresh)
     newCfdImage = (newCfdImage * 0.85).astype("uint8")
     return newCfdImage
     
-def getOpticalFlow(prevGray, grayFrame):
-    """Calculates the magnitude of the dense optical flow."""
-    flow = cv2.calcOpticalFlowFarneback(prevGray, grayFrame, None, 0.5, 3, 15, 3, 5, 1.2, 0)
-    magnitude, _ = cv2.cartToPolar(flow[..., 0], flow[..., 1])
-    flowMagViz = cv2.normalize(magnitude, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-    return flowMagViz
+def getOpticalFlow(prevGray, grayFrame, speed_threshold=5.0):
+    flow = cv2.calcOpticalFlowFarneback(
+        prev=prevGray,
+        next=grayFrame,
+        flow=None,
+        pyr_scale=0.5,
+        levels=5,
+        winsize=25,
+        iterations=3,
+        poly_n=7,
+        poly_sigma=1.5,
+        flags=cv2.OPTFLOW_FARNEBACK_GAUSSIAN
+    )
+
+    magnitude, angle = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+
+    # --- FAST filter ---
+    speed_threshold = 4.0  # tune this experimentally
+    fast_mask = (magnitude > speed_threshold).astype(np.uint8) * 255
+
+    # --- FALLING filter (downward motion ≈ 90° ± 30°) ---
+    down_angle_min = np.pi/3   # 60°
+    down_angle_max = 2*np.pi/3 # 120°
+    falling_mask = ((angle > down_angle_min) & (angle < down_angle_max)).astype(np.uint8) * 255
+
+    # --- Combine ---
+    falling_fast_mask = cv2.bitwise_and(fast_mask, falling_mask)
+
+    return falling_fast_mask
 
 def extractFrames(datasetDirectory, frame, count):
     os.makedirs(datasetDirectory, exist_ok=True)
@@ -59,9 +82,9 @@ def main():
     Main function to demonstrate CFD (Red) and Optical Flow (Blue)
     overlay on a video file, resized for YOLO.
     """
-    cap = cv2.VideoCapture("Videos/Dataset_6.mov")
+    cap = cv2.VideoCapture("Videos/Dataset60_4.mov")
     DATASET_DIRECTORY = "DATASET_CFD"
-    COUNT = 526
+    COUNT = 120
 
     if not cap.isOpened():
         print("Error: Could not open video file.")
