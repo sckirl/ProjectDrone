@@ -6,13 +6,15 @@ from ultralytics import YOLO
 from YOLOdetection import *
 from ultralytics.utils.plotting import Annotator, colors
 from FrameDifferencing import *
+import DroneAccess
 
 # ---- Setup ----
     
 NOTIFY_COUNT = 5
 LINE_Y = 600
 
-model = YOLO("CFDFalling-120.pt")
+model = YOLO("MODELS/CFDFalling-120.pt")
+drone = DroneAccess.Drone("/dev/tty.usbmodem0x80000001")
 object_history = {} 
 seenID = set()
 sent = True
@@ -20,7 +22,7 @@ totalCount = 0
 lastCounted = -1 
 
 def main():
-    cap = cv2.VideoCapture(0)
+    cap = cv2.VideoCapture(1)
 
     if not cap.isOpened():
         print("Error: Could not open video file.")
@@ -66,8 +68,12 @@ def main():
         overlaidResult = overlayMotionOnGrayscale(grayFrame, 
                                                       redMask=cfdImage, 
                                                       blueMask=opticalFlowMask)
-        result = model.predict(overlaidResult, conf=0.4)
+        
+        result = model.predict(overlaidResult, conf=0.6, verbose=False)
         annonated = drawAnnotator(overlaidResult, result[0])
+
+        """if result[0]:
+            drone.readGPS()"""
 
         # --- Display the Results ---
         cv2.imshow('RED = CFD, BLUE = Optical Flow', annonated)
