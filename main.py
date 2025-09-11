@@ -22,7 +22,7 @@ totalCount = 0
 lastCounted = -1 
 
 def main():
-    cap = cv2.VideoCapture(1)
+    cap = cv2.VideoCapture("Videos/Dataset120_3.mov")
 
     if not cap.isOpened():
         print("Error: Could not open video file.")
